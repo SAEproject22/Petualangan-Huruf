@@ -1,0 +1,81 @@
+@import "tailwindcss";
+
+@layer base {
+  * {
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+  }
+
+  body {
+    font-family: 'Fredoka', 'Quicksand', system-ui, -apple-system, sans-serif;
+    background-color: #FFFDF0;
+    color: #2D3748;
+    overflow-x: hidden;
+    min-height: 100vh;
+  }
+}
+
+@keyframes bounceSoft {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+@keyframes wiggleGentle {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(-5deg); }
+  75% { transform: rotate(5deg); }
+}
+
+@keyframes pulseAttention {
+  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.7); }
+  70% { transform: scale(1.08); box-shadow: 0 0 0 16px rgba(74, 222, 128, 0); }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(74, 222, 128, 0); }
+}
+
+.animate-bounce-soft {
+  animation: bounceSoft 2.5s infinite ease-in-out;
+}
+
+.animate-wiggle {
+  animation: wiggleGentle 2.8s infinite ease-in-out;
+}
+
+.highlight-hint {
+  animation: pulseAttention 1.2s infinite !important;
+  border-color: #10B981 !important;
+}
+
+.btn-chunky {
+  transition: all 0.12s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.btn-chunky:active {
+  transform: translateY(4px);
+}
+
+@keyframes floatSlow {
+  0%, 100% { transform: translateX(0) translateY(0); }
+  50% { transform: translateX(25px) translateY(-6px); }
+}
+
+@keyframes floatMid {
+  0%, 100% { transform: translateX(0) translateY(0); }
+  50% { transform: translateX(-20px) translateY(-8px); }
+}
+
+@keyframes floatFast {
+  0%, 100% { transform: translateX(0) translateY(0); }
+  50% { transform: translateX(18px) translateY(-5px); }
+}
+
+.animate-float-slow {
+  animation: floatSlow 9s infinite ease-in-out;
+}
+
+.animate-float-mid {
+  animation: floatMid 7s infinite ease-in-out;
+}
+
+.animate-float-fast {
+  animation: floatFast 8s infinite ease-in-out;
+}

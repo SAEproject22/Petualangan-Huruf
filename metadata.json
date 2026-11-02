@@ -1,0 +1,6 @@
+{
+  "name": "Petualangan Huruf Ajaib",
+  "description": "Aplikasi belajar interaktif huruf A-Z untuk anak usia 4 tahun (PAUD/TK) bersama Kiko si Kelinci.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
