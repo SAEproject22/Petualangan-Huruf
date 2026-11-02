@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { AlphabetItem } from '../types';
 import { ALPHABET_DATA } from '../data/alphabet';
 import {
@@ -24,18 +24,9 @@ export const MenuF_DetektifHuruf: React.FC<MenuFProps> = ({
   setKikoSpeech,
   triggerConfetti,
 }) => {
-  const [targetItem, setTargetItem] = useState<AlphabetItem>(ALPHABET_DATA[0]);
-  const [pictureOptions, setPictureOptions] = useState<AlphabetItem[]>([]);
-  const [selectedUpper, setSelectedUpper] = useState<string | null>(null);
-  const [mistakes, setMistakes] = useState(0);
-  const [questionCount, setQuestionCount] = useState(1);
-  const [answeredCorrectly, setAnsweredCorrectly] = useState(false);
+  const getRandomTarget = () => ALPHABET_DATA[Math.floor(Math.random() * ALPHABET_DATA.length)];
 
-  const generateMission = () => {
-    const target = ALPHABET_DATA[Math.floor(Math.random() * ALPHABET_DATA.length)];
-    setTargetItem(target);
-
-    // Pick 2 other items with distinct letters
+  const getOptionsForTarget = (target: AlphabetItem) => {
     const pool = [target];
     while (pool.length < 3) {
       const rand = ALPHABET_DATA[Math.floor(Math.random() * ALPHABET_DATA.length)];
@@ -43,7 +34,28 @@ export const MenuF_DetektifHuruf: React.FC<MenuFProps> = ({
         pool.push(rand);
       }
     }
-    setPictureOptions(pool.sort(() => 0.5 - Math.random()));
+    return pool.sort(() => 0.5 - Math.random());
+  };
+
+  const [targetItem, setTargetItem] = useState<AlphabetItem>(getRandomTarget);
+  const [pictureOptions, setPictureOptions] = useState<AlphabetItem[]>(() => getOptionsForTarget(targetItem));
+  const [selectedUpper, setSelectedUpper] = useState<string | null>(null);
+  const [mistakes, setMistakes] = useState(0);
+  const [questionCount, setQuestionCount] = useState(1);
+  const [answeredCorrectly, setAnsweredCorrectly] = useState(false);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, []);
+
+  const generateMission = () => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    const target = getRandomTarget();
+    setTargetItem(target);
+    setPictureOptions(getOptionsForTarget(target));
     setSelectedUpper(null);
     setMistakes(0);
     setAnsweredCorrectly(false);
@@ -54,7 +66,13 @@ export const MenuF_DetektifHuruf: React.FC<MenuFProps> = ({
   };
 
   useEffect(() => {
-    generateMission();
+    if (questionCount > 1) {
+      generateMission();
+    } else {
+      const speech = `Misi Detektif Cilik! Temukan gambar yang namanya dimulai dengan huruf ${targetItem.upper}!`;
+      setKikoSpeech(speech, 'talking');
+      speakIndonesian(speech);
+    }
   }, [questionCount]);
 
   const handleRepeatMission = () => {
@@ -80,7 +98,7 @@ export const MenuF_DetektifHuruf: React.FC<MenuFProps> = ({
       speakIndonesian(praise);
       triggerConfetti(`Detektif Hebat! ${item.word}!`);
 
-      setTimeout(() => {
+      timerRef.current = setTimeout(() => {
         setQuestionCount((q) => q + 1);
       }, 1900);
     } else {
@@ -97,7 +115,7 @@ export const MenuF_DetektifHuruf: React.FC<MenuFProps> = ({
   };
 
   return (
-    <div className="bg-white rounded-3xl p-5 sm:p-7 shadow-sm border-3 border-amber-200 text-center">
+    <div className="bg-white/95 backdrop-blur-md rounded-3xl p-5 sm:p-7 shadow-lg border-3 border-sky-200 text-center">
       {/* Top Header */}
       <div className="flex items-center justify-between mb-6">
         <button
@@ -159,6 +177,7 @@ export const MenuF_DetektifHuruf: React.FC<MenuFProps> = ({
           return (
             <button
               key={item.upper}
+              disabled={answeredCorrectly}
               onClick={() => handleSelectPicture(item)}
               className={`w-32 h-36 sm:w-36 sm:h-40 rounded-3xl flex flex-col items-center justify-center p-3 border-4 shadow-md transition-all cursor-pointer ${btnStyle}`}
               title={item.word}

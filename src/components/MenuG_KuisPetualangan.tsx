@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { AlphabetItem } from '../types';
 import { ALPHABET_DATA, CONFUSING_LETTER_GROUPS } from '../data/alphabet';
 import {
@@ -8,7 +8,7 @@ import {
   playGentleTone,
   playVictoryFanfare,
 } from '../services/sound';
-import { ArrowLeft, Trophy, Star, Sparkles, Volume2 } from 'lucide-react';
+import { ArrowLeft, Trophy, Sparkles } from 'lucide-react';
 
 interface MenuGProps {
   onBack: () => void;
@@ -34,14 +34,22 @@ export const MenuG_KuisPetualangan: React.FC<MenuGProps> = ({
   const [stage, setStage] = useState(1);
   const [quizType, setQuizType] = useState<QuizType>('initial_from_image');
   const [targetItem, setTargetItem] = useState<AlphabetItem>(ALPHABET_DATA[0]);
-  const [choices, setChoices] = useState<string[]>([]);
+  const [choices, setChoices] = useState<string[]>(['A', 'B', 'C']);
   const [pictureChoices, setPictureChoices] = useState<AlphabetItem[]>([]);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [mistakes, setMistakes] = useState(0);
   const [answeredCorrectly, setAnsweredCorrectly] = useState(false);
   const [showLevelUpModal, setShowLevelUpModal] = useState(false);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, []);
 
   const initQuizForStage = () => {
+    if (timerRef.current) clearTimeout(timerRef.current);
     const types: QuizType[] = [
       'initial_from_image',
       'find_capital',
@@ -115,7 +123,7 @@ export const MenuG_KuisPetualangan: React.FC<MenuGProps> = ({
     setKikoSpeech(praise, 'cheering');
     speakIndonesian(praise);
 
-    setTimeout(() => {
+    timerRef.current = setTimeout(() => {
       if (stage >= 5) {
         // Completed 5 stages: LEVEL UP!
         playVictoryFanfare();
@@ -146,7 +154,7 @@ export const MenuG_KuisPetualangan: React.FC<MenuGProps> = ({
   };
 
   return (
-    <div className="bg-white rounded-3xl p-5 sm:p-7 shadow-sm border-3 border-amber-200 text-center relative">
+    <div className="bg-white/95 backdrop-blur-md rounded-3xl p-5 sm:p-7 shadow-lg border-3 border-sky-200 text-center relative">
       {/* Top Header */}
       <div className="flex items-center justify-between mb-6">
         <button
@@ -213,6 +221,7 @@ export const MenuG_KuisPetualangan: React.FC<MenuGProps> = ({
               return (
                 <button
                   key={letter}
+                  disabled={answeredCorrectly}
                   onClick={() => {
                     playPopSound();
                     setSelectedAnswer(letter);
@@ -258,6 +267,7 @@ export const MenuG_KuisPetualangan: React.FC<MenuGProps> = ({
               return (
                 <button
                   key={letter}
+                  disabled={answeredCorrectly}
                   onClick={() => {
                     playPopSound();
                     setSelectedAnswer(letter);
@@ -301,6 +311,7 @@ export const MenuG_KuisPetualangan: React.FC<MenuGProps> = ({
               return (
                 <button
                   key={letter}
+                  disabled={answeredCorrectly}
                   onClick={() => {
                     playPopSound();
                     setSelectedAnswer(letter);
@@ -346,6 +357,7 @@ export const MenuG_KuisPetualangan: React.FC<MenuGProps> = ({
               return (
                 <button
                   key={item.upper}
+                  disabled={answeredCorrectly}
                   onClick={() => {
                     playPopSound();
                     setSelectedAnswer(item.upper);

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { AlphabetItem } from '../types';
 import { ALPHABET_DATA } from '../data/alphabet';
 import {
@@ -25,18 +25,34 @@ export const MenuB_PasangkanHuruf: React.FC<MenuBProps> = ({
   setKikoSpeech,
   triggerConfetti,
 }) => {
-  const [currentPairs, setCurrentPairs] = useState<AlphabetItem[]>([]);
-  const [shuffledUpper, setShuffledUpper] = useState<AlphabetItem[]>([]);
-  const [shuffledLower, setShuffledLower] = useState<AlphabetItem[]>([]);
+  // Helper to pick 3 random items
+  const pickThreeItems = () => [...ALPHABET_DATA].sort(() => 0.5 - Math.random()).slice(0, 3);
+
+  const [currentPairs, setCurrentPairs] = useState<AlphabetItem[]>(pickThreeItems);
+  const [shuffledUpper, setShuffledUpper] = useState<AlphabetItem[]>(() =>
+    [...currentPairs].sort(() => 0.5 - Math.random())
+  );
+  const [shuffledLower, setShuffledLower] = useState<AlphabetItem[]>(() =>
+    [...currentPairs].sort(() => 0.5 - Math.random())
+  );
   const [selectedUpper, setSelectedUpper] = useState<string | null>(null);
   const [selectedLower, setSelectedLower] = useState<string | null>(null);
   const [matchedLetters, setMatchedLetters] = useState<string[]>([]);
   const [mistakes, setMistakes] = useState(0);
   const [round, setRound] = useState(1);
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, []);
 
   const initRound = () => {
-    // Pick 3 random distinct letters
-    const pool = [...ALPHABET_DATA].sort(() => 0.5 - Math.random()).slice(0, 3);
+    if (timerRef.current) clearTimeout(timerRef.current);
+    const pool = pickThreeItems();
     setCurrentPairs(pool);
     setShuffledUpper([...pool].sort(() => 0.5 - Math.random()));
     setShuffledLower([...pool].sort(() => 0.5 - Math.random()));
@@ -44,6 +60,7 @@ export const MenuB_PasangkanHuruf: React.FC<MenuBProps> = ({
     setSelectedLower(null);
     setMatchedLetters([]);
     setMistakes(0);
+    setIsProcessing(false);
 
     const speech = 'Sentuh satu huruf besar di kiri, lalu sentuh pasangannya di kanan ya!';
     setKikoSpeech(speech, 'talking');
@@ -54,74 +71,85 @@ export const MenuB_PasangkanHuruf: React.FC<MenuBProps> = ({
     initRound();
   }, [round]);
 
-  const handleSelectUpper = (upper: string) => {
-    if (matchedLetters.includes(upper)) return;
-    playPopSound();
-    setSelectedUpper(upper);
-    speakIndonesian(`Huruf besar ${upper}`);
-  };
+  const verifyMatch = (upper: string, lower: string) => {
+    setIsProcessing(true);
 
-  const handleSelectLower = (lower: string) => {
-    const item = currentPairs.find((p) => p.lower === lower);
-    if (!item || matchedLetters.includes(item.upper)) return;
-    playPopSound();
-    setSelectedLower(lower);
-    speakIndonesian(`Huruf kecil ${lower}`);
-  };
-
-  // Check matching whenever both are selected
-  useEffect(() => {
-    if (!selectedUpper || !selectedLower) return;
-
-    if (selectedUpper.toLowerCase() === selectedLower.toLowerCase()) {
+    if (upper.toLowerCase() === lower.toLowerCase()) {
       // MATCHED!
       playCheerChime();
-      const newMatched = [...matchedLetters, selectedUpper];
+      const newMatched = [...matchedLetters, upper];
       setMatchedLetters(newMatched);
-      onCorrectMatch(selectedUpper);
+      onCorrectMatch(upper);
       setMistakes(0);
 
-      const praise = `Hebat! ${selectedUpper} besar cocok dengan ${selectedLower} kecil!`;
+      const praise = `Hebat! ${upper} besar cocok dengan ${lower} kecil!`;
       setKikoSpeech(praise, 'cheering');
       speakIndonesian(praise);
-      triggerConfetti(`Cocok: ${selectedUpper} = ${selectedLower}!`);
+      triggerConfetti(`Cocok: ${upper} = ${lower}!`);
 
       setSelectedUpper(null);
       setSelectedLower(null);
+      setIsProcessing(false);
 
-      // Check if round complete
+      // Check if all 3 pairs in round are complete
       if (newMatched.length === currentPairs.length) {
-        setTimeout(() => {
+        timerRef.current = setTimeout(() => {
           playVictoryFanfare();
-          const completeMsg = 'Luar biasa! Semua pasangan sudah benar. Ayo lanjut ronde baru!';
+          const completeMsg = 'Luar biasa! Semua pasangan sudah cocok. Ayo lanjut ronde baru!';
           setKikoSpeech(completeMsg, 'cheering');
           speakIndonesian(completeMsg);
-          setTimeout(() => {
+          timerRef.current = setTimeout(() => {
             setRound((r) => r + 1);
-          }, 2000);
-        }, 600);
+          }, 1800);
+        }, 500);
       }
     } else {
       // MISMATCH
       playGentleTone();
       const newMistakes = mistakes + 1;
       setMistakes(newMistakes);
-      onWrongAttempt(selectedUpper);
+      onWrongAttempt(upper);
 
-      const gentle = `Hampir tepat! Ayo cari pasangan yang sama untuk huruf ${selectedUpper}.`;
+      const gentle = `Hampir tepat! Ayo cari pasangan yang sama untuk huruf ${upper}.`;
       setKikoSpeech(gentle, 'thinking');
       speakIndonesian(gentle);
 
-      // Clear selection after a brief delay
-      setTimeout(() => {
+      // Reset selection after brief visual feedback
+      timerRef.current = setTimeout(() => {
         setSelectedUpper(null);
         setSelectedLower(null);
+        setIsProcessing(false);
       }, 700);
     }
-  }, [selectedUpper, selectedLower]);
+  };
+
+  const handleSelectUpper = (upper: string) => {
+    if (isProcessing || matchedLetters.includes(upper)) return;
+    playPopSound();
+    setSelectedUpper(upper);
+    speakIndonesian(`Huruf besar ${upper}`);
+
+    if (selectedLower) {
+      verifyMatch(upper, selectedLower);
+    }
+  };
+
+  const handleSelectLower = (lower: string) => {
+    if (isProcessing) return;
+    const item = currentPairs.find((p) => p.lower === lower);
+    if (!item || matchedLetters.includes(item.upper)) return;
+
+    playPopSound();
+    setSelectedLower(lower);
+    speakIndonesian(`Huruf kecil ${lower}`);
+
+    if (selectedUpper) {
+      verifyMatch(selectedUpper, lower);
+    }
+  };
 
   return (
-    <div className="bg-white rounded-3xl p-5 sm:p-7 shadow-sm border-3 border-amber-200 text-center">
+    <div className="bg-white/95 backdrop-blur-md rounded-3xl p-5 sm:p-7 shadow-lg border-3 border-sky-200 text-center">
       {/* Top Header */}
       <div className="flex items-center justify-between mb-6">
         <button
@@ -159,7 +187,7 @@ export const MenuB_PasangkanHuruf: React.FC<MenuBProps> = ({
             return (
               <button
                 key={`upper-${item.upper}`}
-                disabled={isMatched}
+                disabled={isMatched || isProcessing}
                 onClick={() => handleSelectUpper(item.upper)}
                 className={`w-24 h-24 sm:w-28 sm:h-28 rounded-3xl font-black text-4xl sm:text-5xl flex items-center justify-center transition-all border-4 shadow-md ${
                   isMatched
@@ -182,7 +210,7 @@ export const MenuB_PasangkanHuruf: React.FC<MenuBProps> = ({
           })}
         </div>
 
-        <div className="text-3xl text-slate-300 font-black">↔️</div>
+        <div className="text-3xl text-slate-300 font-black select-none">↔️</div>
 
         {/* Right: Lower case */}
         <div className="flex flex-col gap-4">
@@ -192,7 +220,6 @@ export const MenuB_PasangkanHuruf: React.FC<MenuBProps> = ({
           {shuffledLower.map((item) => {
             const isMatched = matchedLetters.includes(item.upper);
             const isSelected = selectedLower === item.lower;
-            // Adaptive hint if mistakes >= 2 and user selected an upper case letter
             const isHinted =
               mistakes >= 2 &&
               selectedUpper !== null &&
@@ -201,7 +228,7 @@ export const MenuB_PasangkanHuruf: React.FC<MenuBProps> = ({
             return (
               <button
                 key={`lower-${item.lower}`}
-                disabled={isMatched}
+                disabled={isMatched || isProcessing}
                 onClick={() => handleSelectLower(item.lower)}
                 className={`w-24 h-24 sm:w-28 sm:h-28 rounded-3xl font-black text-4xl sm:text-5xl flex items-center justify-center transition-all border-4 shadow-md ${
                   isMatched

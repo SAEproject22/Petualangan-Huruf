@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ConfusingGroup, CONFUSING_LETTER_GROUPS } from '../data/alphabet';
 import {
   speakIndonesian,
@@ -24,14 +24,23 @@ export const MenuD_HurufAwalApa: React.FC<MenuDProps> = ({
   triggerConfetti,
 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [shuffledChoices, setShuffledChoices] = useState<string[]>([]);
+  const currentQuiz: ConfusingGroup = CONFUSING_LETTER_GROUPS[currentIndex % CONFUSING_LETTER_GROUPS.length];
+  const [shuffledChoices, setShuffledChoices] = useState<string[]>(() =>
+    [...CONFUSING_LETTER_GROUPS[0].choices].sort(() => 0.5 - Math.random())
+  );
   const [selected, setSelected] = useState<string | null>(null);
   const [mistakes, setMistakes] = useState(0);
   const [answeredCorrectly, setAnsweredCorrectly] = useState(false);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
 
-  const currentQuiz: ConfusingGroup = CONFUSING_LETTER_GROUPS[currentIndex % CONFUSING_LETTER_GROUPS.length];
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, []);
 
   const setupRound = () => {
+    if (timerRef.current) clearTimeout(timerRef.current);
     setShuffledChoices([...currentQuiz.choices].sort(() => 0.5 - Math.random()));
     setSelected(null);
     setMistakes(0);
@@ -69,7 +78,7 @@ export const MenuD_HurufAwalApa: React.FC<MenuDProps> = ({
       speakIndonesian(praise);
       triggerConfetti(`Benar! Huruf ${currentQuiz.initial}!`);
 
-      setTimeout(() => {
+      timerRef.current = setTimeout(() => {
         setCurrentIndex((i) => i + 1);
       }, 2200);
     } else {
@@ -86,7 +95,7 @@ export const MenuD_HurufAwalApa: React.FC<MenuDProps> = ({
   };
 
   return (
-    <div className="bg-white rounded-3xl p-5 sm:p-7 shadow-sm border-3 border-amber-200 text-center">
+    <div className="bg-white/95 backdrop-blur-md rounded-3xl p-5 sm:p-7 shadow-lg border-3 border-sky-200 text-center">
       {/* Top Header */}
       <div className="flex items-center justify-between mb-6">
         <button
@@ -149,6 +158,7 @@ export const MenuD_HurufAwalApa: React.FC<MenuDProps> = ({
           return (
             <button
               key={letter}
+              disabled={answeredCorrectly}
               onClick={() => handleSelect(letter)}
               className={`w-24 h-24 sm:w-28 sm:h-28 rounded-3xl font-black text-4xl sm:text-5xl flex items-center justify-center border-4 shadow-md transition-all ${btnStyle}`}
             >

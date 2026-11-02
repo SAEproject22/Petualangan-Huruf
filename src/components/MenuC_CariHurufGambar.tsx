@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { AlphabetItem } from '../types';
 import { ALPHABET_DATA } from '../data/alphabet';
 import {
@@ -24,18 +24,9 @@ export const MenuC_CariHurufGambar: React.FC<MenuCProps> = ({
   setKikoSpeech,
   triggerConfetti,
 }) => {
-  const [currentQuiz, setCurrentQuiz] = useState<AlphabetItem>(ALPHABET_DATA[0]);
-  const [choices, setChoices] = useState<string[]>([]);
-  const [selectedLetter, setSelectedLetter] = useState<string | null>(null);
-  const [mistakes, setMistakes] = useState(0);
-  const [questionCount, setQuestionCount] = useState(1);
-  const [answeredCorrectly, setAnsweredCorrectly] = useState(false);
+  const getRandomQuiz = () => ALPHABET_DATA[Math.floor(Math.random() * ALPHABET_DATA.length)];
 
-  const generateQuestion = () => {
-    const target = ALPHABET_DATA[Math.floor(Math.random() * ALPHABET_DATA.length)];
-    setCurrentQuiz(target);
-
-    // Pick 2 random distractor letters
+  const getChoicesForQuiz = (target: AlphabetItem) => {
     const options = [target.upper];
     while (options.length < 3) {
       const rand = ALPHABET_DATA[Math.floor(Math.random() * ALPHABET_DATA.length)].upper;
@@ -43,7 +34,28 @@ export const MenuC_CariHurufGambar: React.FC<MenuCProps> = ({
         options.push(rand);
       }
     }
-    setChoices(options.sort(() => 0.5 - Math.random()));
+    return options.sort(() => 0.5 - Math.random());
+  };
+
+  const [currentQuiz, setCurrentQuiz] = useState<AlphabetItem>(getRandomQuiz);
+  const [choices, setChoices] = useState<string[]>(() => getChoicesForQuiz(currentQuiz));
+  const [selectedLetter, setSelectedLetter] = useState<string | null>(null);
+  const [mistakes, setMistakes] = useState(0);
+  const [questionCount, setQuestionCount] = useState(1);
+  const [answeredCorrectly, setAnsweredCorrectly] = useState(false);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, []);
+
+  const generateQuestion = () => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    const target = getRandomQuiz();
+    setCurrentQuiz(target);
+    setChoices(getChoicesForQuiz(target));
     setSelectedLetter(null);
     setMistakes(0);
     setAnsweredCorrectly(false);
@@ -54,7 +66,13 @@ export const MenuC_CariHurufGambar: React.FC<MenuCProps> = ({
   };
 
   useEffect(() => {
-    generateQuestion();
+    if (questionCount > 1) {
+      generateQuestion();
+    } else {
+      const questionSpeech = `${currentQuiz.word}. Kata ${currentQuiz.word} dimulai dengan huruf apa ya?`;
+      setKikoSpeech(questionSpeech, 'talking');
+      speakIndonesian(questionSpeech);
+    }
   }, [questionCount]);
 
   const handleSpeakObject = () => {
@@ -80,7 +98,7 @@ export const MenuC_CariHurufGambar: React.FC<MenuCProps> = ({
       speakIndonesian(praise);
       triggerConfetti(`Huruf ${currentQuiz.upper} untuk ${currentQuiz.word}!`);
 
-      setTimeout(() => {
+      timerRef.current = setTimeout(() => {
         setQuestionCount((c) => c + 1);
       }, 1800);
     } else {
@@ -97,7 +115,7 @@ export const MenuC_CariHurufGambar: React.FC<MenuCProps> = ({
   };
 
   return (
-    <div className="bg-white rounded-3xl p-5 sm:p-7 shadow-sm border-3 border-amber-200 text-center">
+    <div className="bg-white/95 backdrop-blur-md rounded-3xl p-5 sm:p-7 shadow-lg border-3 border-sky-200 text-center">
       {/* Top Header */}
       <div className="flex items-center justify-between mb-6">
         <button
@@ -164,6 +182,7 @@ export const MenuC_CariHurufGambar: React.FC<MenuCProps> = ({
           return (
             <button
               key={letter}
+              disabled={answeredCorrectly}
               onClick={() => handleChoice(letter)}
               className={`w-24 h-24 sm:w-28 sm:h-28 rounded-3xl font-black text-4xl sm:text-5xl flex items-center justify-center border-4 shadow-md transition-all ${btnStyle}`}
             >

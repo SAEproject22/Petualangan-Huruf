@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { GameMode, AppProgress } from './types';
 import { loadStoredProgress, saveStoredProgress, clearStoredProgress } from './services/storage';
 import {
@@ -65,31 +65,33 @@ export default function App() {
   }, []);
 
   // Update speech & audio
-  const updateKikoSpeech = (text: string, mood: KikoMood = 'happy') => {
+  const updateKikoSpeech = useCallback((text: string, mood: KikoMood = 'happy') => {
     setKikoSpeechText(text);
     setKikoMood(mood);
-  };
+  }, []);
 
-  const handleToggleSound = () => {
-    const nextSound = !progress.soundEnabled;
-    setMuteState(!nextSound);
-    setProgress((prev) => ({ ...prev, soundEnabled: nextSound }));
-    if (nextSound) {
-      updateKikoSpeech('Suara sudah aktif! Kiko siap menemanimu belajar!', 'cheering');
-      speakIndonesian('Suara sudah aktif! Kiko siap menemanimu belajar!');
-    }
-  };
+  const handleToggleSound = useCallback(() => {
+    setProgress((prev) => {
+      const nextSound = !prev.soundEnabled;
+      setMuteState(!nextSound);
+      if (nextSound) {
+        updateKikoSpeech('Suara sudah aktif! Kiko siap menemanimu belajar!', 'cheering');
+        speakIndonesian('Suara sudah aktif! Kiko siap menemanimu belajar!');
+      }
+      return { ...prev, soundEnabled: nextSound };
+    });
+  }, [updateKikoSpeech]);
 
-  const triggerConfettiCelebration = (text: string) => {
+  const triggerConfettiCelebration = useCallback((text: string) => {
     setConfettiText(text);
     setConfettiActive(true);
     setTimeout(() => {
       setConfettiActive(false);
     }, 2000);
-  };
+  }, []);
 
   // Event handlers for answers
-  const handleCorrectAnswer = (letter: string, starsToAdd = 1) => {
+  const handleCorrectAnswer = useCallback((letter: string, starsToAdd = 1) => {
     setProgress((prev) => {
       const currentStat = prev.letterStats[letter] || {
         explored: true,
@@ -111,9 +113,9 @@ export default function App() {
         },
       };
     });
-  };
+  }, []);
 
-  const handleWrongAnswer = (letter: string) => {
+  const handleWrongAnswer = useCallback((letter: string) => {
     setProgress((prev) => {
       const currentStat = prev.letterStats[letter] || {
         explored: true,
@@ -133,9 +135,9 @@ export default function App() {
         },
       };
     });
-  };
+  }, []);
 
-  const handleExploreLetter = (letter: string) => {
+  const handleExploreLetter = useCallback((letter: string) => {
     setProgress((prev) => {
       if (prev.exploredLetters.includes(letter)) return prev;
       const currentStat = prev.letterStats[letter] || {
@@ -155,42 +157,42 @@ export default function App() {
         },
       };
     });
-  };
+  }, []);
 
-  const handlePairMatched = (letter: string) => {
+  const handlePairMatched = useCallback((letter: string) => {
     handleCorrectAnswer(letter, 1);
     setProgress((prev) => ({
       ...prev,
       matchedPairsCount: prev.matchedPairsCount + 1,
     }));
-  };
+  }, [handleCorrectAnswer]);
 
-  const handleAdvanceAdventureLevel = () => {
+  const handleAdvanceAdventureLevel = useCallback(() => {
     setProgress((prev) => ({
       ...prev,
       adventureLevel: prev.adventureLevel + 1,
-      stars: prev.stars + 5, // Bonus stars on leveling up!
+      stars: prev.stars + 5,
     }));
-  };
+  }, []);
 
-  const handleResetProgress = () => {
+  const handleResetProgress = useCallback(() => {
     const fresh = clearStoredProgress();
     setProgress(fresh);
     setShowReport(false);
     updateKikoSpeech('Riwayat belajar sudah bersih. Ayo mulai petualangan baru bersama Kiko!', 'cheering');
     speakIndonesian('Riwayat belajar sudah bersih. Ayo mulai petualangan baru bersama Kiko!');
-  };
+  }, [updateKikoSpeech]);
 
-  const handleSelectGame = (mode: GameMode) => {
+  const handleSelectGame = useCallback((mode: GameMode) => {
     setCurrentGame(mode);
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
+  }, []);
 
-  const handleGoHome = () => {
+  const handleGoHome = useCallback(() => {
     setCurrentGame('dashboard');
     updateKikoSpeech('Halo teman! Aku Kiko si Kelinci. Ayo pilih permainan yang kamu suka!', 'happy');
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
+  }, [updateKikoSpeech]);
 
   return (
     <div className="min-h-screen flex flex-col relative text-slate-800 antialiased selection:bg-amber-200 overflow-x-hidden">
